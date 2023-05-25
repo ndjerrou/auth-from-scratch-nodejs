@@ -2,7 +2,6 @@ const User = require('../users/users.model');
 
 const _ = require('underscore');
 const bcrypt = require('bcrypt');
-const jwt = require('jsonwebtoken');
 
 module.exports = {
   async signUp(req, res) {
@@ -21,12 +20,22 @@ module.exports = {
 
       user.save();
 
-      const token = jwt.sign(
-        _.pick(user, ['firstName', '_id']),
-        process.env.PRIVATE_KEY
-      );
+      const token = user.generateAuthToken();
 
-      res.status(201).send({ ok: true, token });
+      res
+        .header('x-auth-token', token)
+        .status(201)
+        .send({ ok: true, data: _.pick(user, '_id', 'firstName') });
+    } catch (err) {
+      res.status(500).send({ ok: false, msg: 'Please try again later' });
+    }
+  },
+
+  async me(req, res) {
+    try {
+      const user = await User.findOne({ _id: req.user.id });
+
+      res.send({ ok: true, data: _.pick(user, '_id', 'firstName') });
     } catch (err) {
       res.status(500).send({ ok: false, msg: 'Please try again later' });
     }
